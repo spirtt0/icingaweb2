@@ -533,8 +533,10 @@
          * @param {object} e Event
          */
         closeMobileMenu: function(e) {
-            if (e.which === 13) {
+            var $search = $('#search');
+            if (e.which === 13 && $search.is(':focus')) {
                 $('#sidebar').removeClass('expanded');
+                $search.blur();
             }
         },
 
@@ -600,13 +602,8 @@
                             )
                             .prepend(
                                 $('<div id="mobile-menu-toggle"><button><i class="icon-menu"></i></button></div>')
-                            )
-                            .css({
-                                paddingBottom: $('#mobile-menu-toggle').height(),
-                                top: 0,
-                                zIndex: 3
-                            });
-                        $search.on('keypress', this.closeMobileMenu);
+                            );
+                        $(window).on('keypress', this.closeMobileMenu);
 
                         this.mobileMenu = true;
                     }

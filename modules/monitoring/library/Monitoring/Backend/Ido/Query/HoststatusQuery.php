@@ -3,8 +3,6 @@
 
 namespace Icinga\Module\Monitoring\Backend\Ido\Query;
 
-use Zend_Db_Expr;
-
 class HoststatusQuery extends IdoQuery
 {
     /**
@@ -80,6 +78,7 @@ class HoststatusQuery extends IdoQuery
             'host_last_hard_state_change'           => 'UNIX_TIMESTAMP(hs.last_hard_state_change)',
             'host_last_notification'                => 'UNIX_TIMESTAMP(hs.last_notification)',
             'host_last_state_change'                => 'UNIX_TIMESTAMP(hs.last_state_change)',
+            'host_last_state_change_ts'             => 'hs.last_state_change',
             'host_last_time_down'                   => 'UNIX_TIMESTAMP(hs.last_time_down)',
             'host_last_time_unreachable'            => 'UNIX_TIMESTAMP(hs.last_time_unreachable)',
             'host_last_time_up'                     => 'UNIX_TIMESTAMP(hs.last_time_up)',
@@ -118,37 +117,28 @@ class HoststatusQuery extends IdoQuery
             'host_process_performance_data'         => 'hs.process_performance_data',
             'host_retry_check_interval'             => 'hs.retry_check_interval',
             'host_scheduled_downtime_depth'         => 'hs.scheduled_downtime_depth',
-            'host_severity'                         => 'CASE WHEN hs.current_state = 0
-            THEN
-                CASE WHEN hs.has_been_checked = 0 OR hs.has_been_checked IS NULL
-                     THEN 16
-                     ELSE 0
-                END
-                +
-                CASE WHEN hs.problem_has_been_acknowledged = 1
-                     THEN 2
-                     ELSE
-                        CASE WHEN hs.scheduled_downtime_depth > 0
-                            THEN 1
-                            ELSE 4
+            'host_severity'                         => '
+                CASE
+                    WHEN hs.has_been_checked = 0 OR hs.has_been_checked IS NULL
+                    THEN 16
+                ELSE
+                    CASE 
+                        WHEN hs.current_state = 0
+                        THEN 1
+                    ELSE
+                        CASE
+                            WHEN hs.current_state = 1 THEN 64
+                            WHEN hs.current_state = 2 THEN 32
+                            ELSE 256
                         END
-                END
-            ELSE
-                CASE WHEN hs.has_been_checked = 0 OR hs.has_been_checked IS NULL THEN 16
-                     WHEN hs.current_state = 1 THEN 32
-                     WHEN hs.current_state = 2 THEN 64
-                     ELSE 256
-                END
-                +
-                CASE WHEN hs.problem_has_been_acknowledged = 1
-                     THEN 2
-                     ELSE
-                        CASE WHEN hs.scheduled_downtime_depth > 0
-                            THEN 1
-                            ELSE 4
+                        +
+                        CASE 
+                            WHEN hs.problem_has_been_acknowledged = 1 THEN 2
+                            WHEN hs.scheduled_downtime_depth > 0 THEN 1
+                            ELSE 256
                         END
-                END
-            END',
+                    END
+                END',
             'host_state'                => 'CASE WHEN hs.has_been_checked = 0 OR hs.has_been_checked IS NULL THEN 99 ELSE hs.current_state END',
             'host_state_type'           => 'hs.state_type',
             'host_status_update_time'   => 'hs.status_update_time',
@@ -177,17 +167,16 @@ class HoststatusQuery extends IdoQuery
         if (version_compare($this->getIdoVersion(), '1.10.0', '<')) {
             $this->columnMap['hoststatus']['host_check_source'] = '(NULL)';
         }
-
         if (version_compare($this->getIdoVersion(), '1.13.0', '<')) {
             $this->columnMap['hoststatus']['host_is_reachable'] = '(NULL)';
         }
 
         $this->select->from(
-            array('h' => $this->prefix . 'hosts'),
+            array('ho' => $this->prefix . 'objects'),
             array()
         )->join(
-            array('ho' => $this->prefix . 'objects'),
-            'ho.object_id = h.host_object_id AND ho.is_active = 1 AND ho.objecttype_id = 1',
+            array('h' => $this->prefix . 'hosts'),
+            'h.host_object_id = ho.object_id AND ho.is_active = 1 AND ho.objecttype_id = 1',
             array()
         );
         $this->joinedVirtualTables['hosts'] = true;

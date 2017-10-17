@@ -67,9 +67,11 @@
   }
 
   #sidebar {
-    top: 0;
+    top: 0 !important;
     height: 32px;
+    padding-bottom: 2.5em;
     width: 100%;
+    z-index: 3;
   }
 
   .dashboard > div.container {
@@ -116,4 +118,14 @@
 
 #layout.twocols.wide-layout #col2 {
   width: 66.66%;
+}
+
+// Safe areas for iPhone X
+
+#header, #sidebar, #footer {
+  padding-left: constant(safe-area-inset-left);
+}
+
+#main, #footer {
+  padding-right: constant(safe-area-inset-right);
 }

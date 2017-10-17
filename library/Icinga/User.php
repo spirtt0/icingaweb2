@@ -7,6 +7,7 @@ use DateTimeZone;
 use InvalidArgumentException;
 use Icinga\Application\Config;
 use Icinga\Authentication\Role;
+use Icinga\Exception\ProgrammingError;
 use Icinga\User\Preferences;
 use Icinga\Web\Navigation\Navigation;
 
@@ -17,13 +18,6 @@ use Icinga\Web\Navigation\Navigation;
  */
 class User
 {
-    /**
-     * Username
-     *
-     * @var string
-     */
-    protected $username;
-
     /**
      * Firstname
      *
@@ -44,6 +38,13 @@ class User
      * @var string
      */
     protected $email;
+
+    /**
+     * {@link username} without {@link domain}
+     *
+     * @var string
+     */
+    protected $localUsername;
 
     /**
      * Domain
@@ -142,10 +143,13 @@ class User
      * Setter for preferences
      *
      * @param   Preferences     $preferences
+     *
+     * @return  $this
      */
     public function setPreferences(Preferences $preferences)
     {
         $this->preferences = $preferences;
+        return $this;
     }
 
     /**
@@ -176,10 +180,13 @@ class User
      * Set the groups this user belongs to
      *
      * @param   array   $groups
+     *
+     * @return  $this
      */
     public function setGroups(array $groups)
     {
         $this->groups = $groups;
+        return $this;
     }
 
     /**
@@ -279,17 +286,32 @@ class User
      */
     public function getUsername()
     {
-        return $this->username;
+        return $this->domain === null ? $this->localUsername : $this->localUsername . '@' . $this->domain;
     }
 
     /**
      * Setter for username
      *
      * @param   string      $name
+     *
+     * @return  $this
      */
     public function setUsername($name)
     {
-        $this->username = $name;
+        $parts = explode('\\', $name, 2);
+        if (count($parts) === 2) {
+            list($this->domain, $this->localUsername) = $parts;
+        } else {
+            $parts = explode('@', $name, 2);
+            if (count($parts) === 2) {
+                list($this->localUsername, $this->domain) = $parts;
+            } else {
+                $this->localUsername = $name;
+                $this->domain = null;
+            }
+        }
+
+        return $this;
     }
 
     /**
@@ -306,10 +328,13 @@ class User
      * Setter for firstname
      *
      * @param   string      $name
+     *
+     * @return  $this
      */
     public function setFirstname($name)
     {
         $this->firstname = $name;
+        return $this;
     }
 
     /**
@@ -326,10 +351,13 @@ class User
      * Setter for lastname
      *
      * @param   string      $name
+     *
+     * @return  $this
      */
     public function setLastname($name)
     {
         $this->lastname = $name;
+        return $this;
     }
 
     /**
@@ -347,47 +375,90 @@ class User
      *
      * @param   string      $mail
      *
+     * @return  $this
+     *
      * @throws  InvalidArgumentException    When an invalid mail is provided
      */
     public function setEmail($mail)
     {
-        if (filter_var($mail, FILTER_VALIDATE_EMAIL)) {
-            $this->email = $mail;
-        } else {
-            throw new InvalidArgumentException("Invalid mail given for user $this->username: $mail");
+        if ($mail !== null && !filter_var($mail, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException(
+                sprintf('Invalid mail given for user %s: %s', $this->getUsername(), $mail)
+            );
         }
+
+        $this->email = $mail;
+        return $this;
     }
 
     /**
-     * Setter for domain
+     * Set the domain
      *
      * @param   string      $domain
+     *
+     * @return  $this
      */
     public function setDomain($domain)
     {
-        $this->domain = $domain;
+        $domain = trim($domain);
+
+        if (strlen($domain)) {
+            $this->domain = $domain;
+        }
+
+        return $this;
     }
 
     /**
-     * Getter for domain
+     * Get whether the user has a domain
+     *
+     * @return  bool
+     */
+    public function hasDomain()
+    {
+        return $this->domain !== null;
+    }
+
+    /**
+     * Get the domain
      *
      * @return  string
+     *
+     * @throws  ProgrammingError    If the user does not have a domain
      */
     public function getDomain()
     {
+        if ($this->domain === null) {
+            throw new ProgrammingError(
+                'User does not have a domain.'
+                . ' Use User::hasDomain() to check whether the user has a domain beforehand.'
+            );
+        }
         return $this->domain;
     }
 
+    /**
+     * Get the local username, ie. the username without its domain
+     *
+     * @return string
+     */
+    public function getLocalUsername()
+    {
+        return $this->localUsername;
+    }
 
     /**
      * Set additional information about user
      *
      * @param   string      $key
      * @param   string      $value
+     *
+     * @return  $this
      */
     public function setAdditional($key, $value)
     {
         $this->additionalInformation[$key] = $value;
+        return $this;
     }
 
     /**
@@ -427,10 +498,13 @@ class User
      *
      * @param string    $username
      * @param string    $field
+     *
+     * @return  $this
      */
     public function setExternalUserInformation($username, $field)
     {
         $this->externalUserInformation = array($username, $field);
+        return $this;
     }
 
     /**

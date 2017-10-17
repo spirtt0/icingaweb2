@@ -946,7 +946,7 @@ class Form extends Zend_Form
             if ($this->getUseFormAutosubmit()) {
                 $warningId = 'autosubmit_warning_' . $el->getId();
                 $warningText = $this->getView()->escape($this->translate(
-                    'Upon its value changing, this field issues an automatic update of this page.'
+                    'This page will be automatically updated upon change of the value'
                 ));
                 $autosubmitDecorator = $this->_getDecorator('Callback', array(
                     'placement' => 'PREPEND',
@@ -1102,20 +1102,22 @@ class Form extends Zend_Form
      *
      * @param   Zend_Form   $form
      * @param   array       $defaults
+     * @param   bool        $ignoreDisabled
      */
-    protected function preserveDefaults(Zend_Form $form, array & $defaults)
+    protected function preserveDefaults(Zend_Form $form, array & $defaults, $ignoreDisabled = true)
     {
-        foreach ($form->getElements() as $name => $_) {
-            if (array_key_exists($name, $defaults)
-                && array_key_exists($name . static::DEFAULT_SUFFIX, $defaults)
-                && $defaults[$name] === $defaults[$name . static::DEFAULT_SUFFIX]
+        foreach ($form->getElements() as $name => $element) {
+            if ((array_key_exists($name, $defaults)
+                    && array_key_exists($name . static::DEFAULT_SUFFIX, $defaults)
+                    && $defaults[$name] === $defaults[$name . static::DEFAULT_SUFFIX])
+                || (! $ignoreDisabled && $element->getAttrib('disabled'))
             ) {
                 unset($defaults[$name]);
             }
         }
 
         foreach ($form->getSubForms() as $_ => $subForm) {
-            $this->preserveDefaults($subForm, $defaults);
+            $this->preserveDefaults($subForm, $defaults, $ignoreDisabled);
         }
     }
 
@@ -1142,6 +1144,11 @@ class Form extends Zend_Form
             if (($frameUpload = (bool) $request->getUrl()->shift('_frameUpload', false))) {
                 $this->getView()->layout()->setLayout('wrapped');
             }
+
+            // To prevent a BC, this is here. The proper fix is to extend populate()
+            // and pass $ignoreDisabled through to preserveDefaults()
+            $this->create($formData)->preserveDefaults($this, $formData, false);
+
             $this->populate($formData); // Necessary to get isSubmitted() to work
             if (! $this->getSubmitLabel() || $this->isSubmitted()) {
                 if ($this->isValid($formData)
@@ -1168,9 +1175,7 @@ class Form extends Zend_Form
                         $this->getView()->layout()->redirectUrl = $this->getRedirectUrl()->getAbsoluteUrl();
                     }
                 } elseif ($this->getIsApiTarget() || $this->getRequest()->isApiRequest()) {
-                    $this->getResponse()->json()->setFailData(
-                        array_merge($this->getMessages(), $this->getErrorMessages())
-                    )->sendResponse();
+                    $this->getResponse()->json()->setFailData($this->getMessages())->sendResponse();
                 }
             } elseif ($this->getValidatePartial()) {
                 // The form can't be processed but we may want to show validation errors though
@@ -1581,7 +1586,12 @@ class Form extends Zend_Form
      */
     public function error($message, $markAsError = true)
     {
-        $this->addNotification($message, self::NOTIFICATION_ERROR);
+        if ($this->getIsApiTarget()) {
+            $this->addErrorMessage($message);
+        } else {
+            $this->addNotification($message, self::NOTIFICATION_ERROR);
+        }
+
         if ($markAsError) {
             $this->markAsError();
         }
@@ -1599,7 +1609,12 @@ class Form extends Zend_Form
      */
     public function warning($message, $markAsError = true)
     {
-        $this->addNotification($message, self::NOTIFICATION_WARNING);
+        if ($this->getIsApiTarget()) {
+            $this->addErrorMessage($message);
+        } else {
+            $this->addNotification($message, self::NOTIFICATION_WARNING);
+        }
+
         if ($markAsError) {
             $this->markAsError();
         }
@@ -1617,7 +1632,12 @@ class Form extends Zend_Form
      */
     public function info($message, $markAsError = true)
     {
-        $this->addNotification($message, self::NOTIFICATION_INFO);
+        if ($this->getIsApiTarget()) {
+            $this->addErrorMessage($message);
+        } else {
+            $this->addNotification($message, self::NOTIFICATION_INFO);
+        }
+
         if ($markAsError) {
             $this->markAsError();
         }

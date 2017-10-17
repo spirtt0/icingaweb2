@@ -6,9 +6,7 @@ namespace Icinga\Controllers;
 use Zend_Controller_Plugin_ErrorHandler;
 use Icinga\Application\Icinga;
 use Icinga\Application\Logger;
-use Icinga\Exception\Http\HttpBadRequestException;
-use Icinga\Exception\Http\HttpMethodNotAllowedException;
-use Icinga\Exception\Http\HttpNotFoundException;
+use Icinga\Exception\Http\HttpExceptionInterface;
 use Icinga\Exception\MissingParameterException;
 use Icinga\Security\SecurityException;
 use Icinga\Web\Controller\ActionController;
@@ -23,6 +21,14 @@ class ErrorController extends ActionController
      * {@inheritdoc}
      */
     protected $requiresAuthentication = false;
+
+    /**
+     * {@inheritdoc}
+     */
+    public function init()
+    {
+        $this->rerenderLayout = $this->params->has('renderLayout');
+    }
 
     /**
      * Display exception
@@ -59,12 +65,11 @@ class ErrorController extends ActionController
                 break;
             default:
                 switch (true) {
-                    case $exception instanceof HttpMethodNotAllowedException:
-                        $this->getResponse()->setHttpResponseCode(405);
-                        $this->getResponse()->setHeader('Allow', $exception->getAllowedMethods());
-                        break;
-                    case $exception instanceof HttpNotFoundException:
-                        $this->getResponse()->setHttpResponseCode(404);
+                    case $exception instanceof HttpExceptionInterface:
+                        $this->getResponse()->setHttpResponseCode($exception->getStatusCode());
+                        foreach ($exception->getHeaders() as $name => $value) {
+                            $this->getResponse()->setHeader($name, $value, true);
+                        }
                         break;
                     case $exception instanceof MissingParameterException:
                         $this->getResponse()->setHttpResponseCode(400);
@@ -72,9 +77,6 @@ class ErrorController extends ActionController
                             'X-Status-Reason',
                             'Missing parameter ' . $exception->getParameter()
                         );
-                        break;
-                    case $exception instanceof HttpBadRequestException:
-                        $this->getResponse()->setHttpResponseCode(400);
                         break;
                     case $exception instanceof SecurityException:
                         $this->getResponse()->setHttpResponseCode(403);

@@ -1,5 +1,8 @@
 # Icinga Web 2
 
+[![Build Status](https://travis-ci.org/Icinga/icingaweb2.png?branch=master)](https://travis-ci.org/Icinga/icingaweb2)
+[![Github Tag](https://img.shields.io/github/tag/Icinga/icingaweb2.svg)](https://github.com/Icinga/icingaweb2)
+
 ![Icinga Logo](https://www.icinga.com/wp-content/uploads/2014/06/icinga_logo.png)
 
 1. [About](#about)
@@ -39,6 +42,8 @@ or ask an Icinga partner for [professional support](https://www.icinga.com/servi
 
 ## Contributing
 
-There are many ways to contribute to Icinga -- whether it be creating pull requests on
-[GitHub](https://github.com/Icinga/icingaweb2), sending patches, testing, reporting bugs,
-or reviewing and updating the documentation. Every contribution is appreciated.
+There are many ways to contribute to Icinga -- whether it be sending patches,
+testing, reporting bugs, or reviewing and updating the documentation. Every
+contribution is appreciated!
+
+Please continue reading in the [contributing chapter](CONTRIBUTING.md).

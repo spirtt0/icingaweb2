@@ -23,7 +23,13 @@ class Json
      */
     public static function encode($value, $options = 0, $depth = 512)
     {
-        $encoded = json_encode($value, $options, $depth);
+        if (version_compare(phpversion(), '5.4.0', '<')) {
+            $encoded = json_encode($value);
+        } else if (version_compare(phpversion(), '5.5.0', '<')) {
+            $encoded = json_encode($value, $options);
+        } else {
+            $encoded = json_encode($value, $options, $depth);
+        }
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new JsonEncodeException('%s: %s', static::lastErrorMsg(), var_export($value, true));
         }
@@ -43,7 +49,12 @@ class Json
      */
     public static function decode($json, $assoc = false, $depth = 512, $options = 0)
     {
-        $decoded = json_decode($json, $assoc, $depth, $options);
+        if (version_compare(phpversion(), '5.4.0', '<')) {
+            $decoded = json_decode($json, $assoc, $depth);
+        } else {
+            $decoded = json_decode($json, $assoc, $depth, $options);
+        }
+
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new JsonDecodeException('%s: %s', static::lastErrorMsg(), var_export($json, true));
         }

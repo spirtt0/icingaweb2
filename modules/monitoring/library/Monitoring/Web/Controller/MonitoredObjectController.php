@@ -10,6 +10,7 @@ use Icinga\Module\Monitoring\Forms\Command\Object\DeleteDowntimeCommandForm;
 use Icinga\Module\Monitoring\Forms\Command\Object\ObjectsCommandForm;
 use Icinga\Module\Monitoring\Forms\Command\Object\RemoveAcknowledgementCommandForm;
 use Icinga\Module\Monitoring\Forms\Command\Object\ToggleObjectFeaturesCommandForm;
+use Icinga\Module\Monitoring\Hook\DetailviewExtensionHook;
 use Icinga\Web\Hook;
 use Icinga\Web\Url;
 use Icinga\Web\Widget\Tabextension\DashboardAction;
@@ -55,25 +56,8 @@ abstract class MonitoredObjectController extends Controller
     public function showAction()
     {
         $this->setAutorefreshInterval(10);
+        $this->setupQuickActionForms();
         $auth = $this->Auth();
-        if ($auth->hasPermission('monitoring/command/schedule-check')) {
-            $checkNowForm = new CheckNowCommandForm();
-            $checkNowForm
-                ->setObjects($this->object)
-                ->handleRequest();
-            $this->view->checkNowForm = $checkNowForm;
-        }
-        if (! in_array((int) $this->object->state, array(0, 99))) {
-            if ((bool) $this->object->acknowledged) {
-                if ($auth->hasPermission('monitoring/command/remove-acknowledgement')) {
-                    $removeAckForm = new RemoveAcknowledgementCommandForm();
-                    $removeAckForm
-                        ->setObjects($this->object)
-                        ->handleRequest();
-                    $this->view->removeAckForm = $removeAckForm;
-                }
-            }
-        }
         $this->object->populate();
         $this->handleFormatRequest();
         $toggleFeaturesForm = new ToggleObjectFeaturesCommandForm(array(
@@ -96,6 +80,15 @@ abstract class MonitoredObjectController extends Controller
         }
         $this->view->showInstance = $this->backend->select()->from('instance')->count() > 1;
         $this->view->object = $this->object;
+
+        $this->view->extensionsHtml = array();
+        foreach (Hook::all('Monitoring\DetailviewExtension') as $hook) {
+            /** @var DetailviewExtensionHook $hook */
+            $this->view->extensionsHtml[] =
+                '<div class="icinga-module module-' . $this->view->escape($hook->getModule()->getName()) . '">'
+                . $hook->setView($this->view)->getHtmlForObject($this->object)
+                . '</div>';
+        }
     }
 
     /**
@@ -132,6 +125,7 @@ abstract class MonitoredObjectController extends Controller
         $this->view->tabs->remove('dashboard');
         $this->view->tabs->remove('menu-entry');
         $this->_helper->viewRenderer('partials/command/object-command-form', null, true);
+        $this->setupQuickActionForms();
         return $form;
     }
 
@@ -255,5 +249,28 @@ abstract class MonitoredObjectController extends Controller
             );
         }
         $tabs->extend(new DashboardAction())->extend(new MenuAction());
+    }
+
+    /**
+     * Create quick action forms and pass them to the view
+     */
+    protected function setupQuickActionForms()
+    {
+        $auth = $this->Auth();
+        if ($auth->hasPermission('monitoring/command/schedule-check')) {
+            $this->view->checkNowForm = $checkNowForm = new CheckNowCommandForm();
+            $checkNowForm
+                ->setObjects($this->object)
+                ->handleRequest();
+        }
+        if (! in_array((int) $this->object->state, array(0, 99))
+            && $this->object->acknowledged
+            && $auth->hasPermission('monitoring/command/remove-acknowledgement')
+        ) {
+            $this->view->removeAckForm = $removeAckForm = new RemoveAcknowledgementCommandForm();
+            $removeAckForm
+                ->setObjects($this->object)
+                ->handleRequest();
+        }
     }
 }

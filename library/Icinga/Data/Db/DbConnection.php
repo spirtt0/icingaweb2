@@ -139,7 +139,15 @@ class DbConnection implements Selectable, Extensible, Updatable, Reducible, Insp
         switch ($this->dbType) {
             case 'mssql':
                 $adapter = 'Pdo_Mssql';
-                $adapterParamaters['pdoType'] = $this->config->get('pdoType', 'dblib');
+                $pdoType = $this->config->get('pdoType', 'dblib');
+                if ($pdoType === 'dblib') {
+                    // Driver does not support setting attributes
+                    unset($adapterParamaters['persistent']);
+                    unset($adapterParamaters['options']);
+                    unset($adapterParamaters['driver_options']);
+                }
+                $adapterParamaters['pdoType'] = $pdoType;
+                $defaultPort = 1433;
                 break;
             case 'mysql':
                 $adapter = 'Pdo_Mysql';
@@ -176,8 +184,7 @@ class DbConnection implements Selectable, Extensible, Updatable, Reducible, Insp
                     unset($adapterParamaters['charset']);
                 }
                 $driverOptions[PDO::MYSQL_ATTR_INIT_COMMAND] .=';';
-
-                $adapterParamaters['port'] = $this->config->get('port', 3306);
+                $defaultPort = 3306;
                 break;
             case 'oci':
                 $adapter = 'Oracle';
@@ -186,13 +193,19 @@ class DbConnection implements Selectable, Extensible, Updatable, Reducible, Insp
                 $adapterParamaters['driver_options'] = array(
                     'lob_as_string' => true
                 );
+                $defaultPort = 1521;
                 break;
             case 'oracle':
                 $adapter = 'Pdo_Oci';
+                $defaultPort = 1521;
                 break;
             case 'pgsql':
                 $adapter = 'Pdo_Pgsql';
-                $adapterParamaters['port'] = $this->config->get('port', 5432);
+                $defaultPort = 5432;
+                break;
+            case 'ibm':
+                $adapter = 'Pdo_Ibm';
+                $defaultPort = 50000;
                 break;
             default:
                 throw new ConfigurationError(
@@ -200,6 +213,7 @@ class DbConnection implements Selectable, Extensible, Updatable, Reducible, Insp
                     $this->dbType
                 );
         }
+        $adapterParamaters['port'] = $this->config->get('port', $defaultPort);
         $this->dbAdapter = Zend_Db::factory($adapter, $adapterParamaters);
         $this->dbAdapter->setFetchMode(Zend_Db::FETCH_OBJ);
         // TODO(el/tg): The profiler is disabled per default, why do we disable the profiler explicitly?
@@ -319,6 +333,7 @@ class DbConnection implements Selectable, Extensible, Updatable, Reducible, Insp
     /**
      * Insert a table row with the given data
      *
+     * Note that the base implementation does not perform any quoting on the $table argument.
      * Pass an array with a column name (the same as in $bind) and a PDO::PARAM_* constant as value
      * as third parameter $types to define a different type than string for a particular column.
      *
@@ -330,13 +345,19 @@ class DbConnection implements Selectable, Extensible, Updatable, Reducible, Insp
      */
     public function insert($table, array $bind, array $types = array())
     {
-        $values = array();
-        foreach ($bind as $column => $_) {
-            $values[] = ':' . $column;
+        $columns = $values = array();
+        foreach ($bind as $column => $value) {
+            $columns[] = $column;
+            if ($value instanceof Zend_Db_Expr) {
+                $values[] = (string) $value;
+                unset($bind[$column]);
+            } else {
+                $values[] = ':' . $column;
+            }
         }
 
         $sql = 'INSERT INTO ' . $table
-            . ' (' . join(', ', array_keys($bind)) . ') '
+            . ' (' . join(', ', $columns) . ') '
             . 'VALUES (' . join(', ', $values) . ')';
         $statement = $this->dbAdapter->prepare($sql);
 
@@ -352,6 +373,7 @@ class DbConnection implements Selectable, Extensible, Updatable, Reducible, Insp
     /**
      * Update table rows with the given data, optionally limited by using a filter
      *
+     * Note that the base implementation does not perform any quoting on the $table argument.
      * Pass an array with a column name (the same as in $bind) and a PDO::PARAM_* constant as value
      * as fourth parameter $types to define a different type than string for a particular column.
      *
@@ -365,8 +387,13 @@ class DbConnection implements Selectable, Extensible, Updatable, Reducible, Insp
     public function update($table, array $bind, Filter $filter = null, array $types = array())
     {
         $set = array();
-        foreach ($bind as $column => $_) {
-            $set[] = $column . ' = :' . $column;
+        foreach ($bind as $column => $value) {
+            if ($value instanceof Zend_Db_Expr) {
+                $set[] = $column . ' = ' . $value;
+                unset($bind[$column]);
+            } else {
+                $set[] = $column . ' = :' . $column;
+            }
         }
 
         $sql = 'UPDATE ' . $table

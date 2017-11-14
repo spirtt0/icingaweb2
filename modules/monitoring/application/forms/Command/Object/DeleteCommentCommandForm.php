@@ -4,13 +4,12 @@
 namespace Icinga\Module\Monitoring\Forms\Command\Object;
 
 use Icinga\Module\Monitoring\Command\Object\DeleteCommentCommand;
-use Icinga\Module\Monitoring\Forms\Command\CommandForm;
 use Icinga\Web\Notification;
 
 /**
  * Form for deleting host or service comments
  */
-class DeleteCommentCommandForm extends CommandForm
+class DeleteCommentCommandForm extends ObjectsCommandForm
 {
     /**
      * {@inheritdoc}

@@ -10,7 +10,7 @@ use Icinga\Web\Notification;
 /**
  * Form for deleting host or service downtimes
  */
-class DeleteDowntimeCommandForm extends CommandForm
+class DeleteDowntimeCommandForm extends ObjectsCommandForm
 {
     /**
      * {@inheritdoc}

@@ -95,6 +95,7 @@ class DowntimeController extends Controller
                     'downtime_name'         => $this->downtime->name,
                     'redirect'              => Url::fromPath('monitoring/list/downtimes'),
                 ))
+                // TODO: hand over object
                 ->handleRequest();
             $this->view->delDowntimeForm = $form;
         }

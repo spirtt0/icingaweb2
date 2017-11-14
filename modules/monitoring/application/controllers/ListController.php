@@ -258,7 +258,9 @@ class ListController extends Controller
 
         if ($this->Auth()->hasPermission('monitoring/command/downtime/delete')) {
             $this->view->delDowntimeForm = new DeleteDowntimeCommandForm();
-            $this->view->delDowntimeForm->handleRequest();
+            $this->view->delDowntimeForm
+                // TODO: hand over object
+                ->handleRequest();
         }
     }
 
@@ -448,7 +450,9 @@ class ListController extends Controller
 
         if ($this->Auth()->hasPermission('monitoring/command/comment/delete')) {
             $this->view->delCommentForm = new DeleteCommentCommandForm();
-            $this->view->delCommentForm->handleRequest();
+            $this->view->delCommentForm
+                // TODO: hand over object
+                ->handleRequest();
         }
     }
 

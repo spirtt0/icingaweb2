@@ -78,6 +78,7 @@ class CommentController extends Controller
                     'comment_name'          => $this->comment->name,
                     'redirect'              => $listUrl
                 ))
+                // TODO: hand over object
                 ->handleRequest();
             $this->view->delCommentForm = $form;
         }

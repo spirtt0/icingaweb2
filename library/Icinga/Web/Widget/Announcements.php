@@ -3,6 +3,8 @@
 
 namespace Icinga\Web\Widget;
 
+use HTMLPurifier;
+use HTMLPurifier_Config;
 use Icinga\Application\Icinga;
 use Icinga\Data\Filter\Filter;
 use Icinga\Forms\Announcement\AcknowledgeAnnouncementForm;
@@ -14,6 +16,13 @@ use Icinga\Web\Announcement\AnnouncementIniRepository;
  */
 class Announcements extends AbstractWidget
 {
+    /**
+     * Cache for {@link getPurifier()}
+     *
+     * @var HTMLPurifier
+     */
+    protected $purifier;
+
     /**
      * {@inheritdoc}
      */
@@ -40,7 +49,7 @@ class Announcements extends AbstractWidget
                 $ackForm = new AcknowledgeAnnouncementForm();
                 $ackForm->populate(array('hash' => $announcement->hash));
                 $html .= '<li><div>'
-                    . $this->view()->escape($announcement->message)
+                    . $this->getPurifier()->purify($announcement->message)
                     . '</div>'
                     . $ackForm
                     . '</li>';
@@ -50,5 +59,36 @@ class Announcements extends AbstractWidget
         }
         // Force container update on XHR
         return '<div style="display: none;"></div>';
+    }
+
+    /**
+     * Initialize and return HTML purifier for announcements' messages
+     *
+     * @return HTMLPurifier
+     */
+    protected function getPurifier()
+    {
+        if ($this->purifier === null) {
+            require_once 'HTMLPurifier/Bootstrap.php';
+            require_once 'HTMLPurifier.php';
+            require_once 'HTMLPurifier.autoload.php';
+
+            $config = HTMLPurifier_Config::createDefault();
+            $config->set('Core.EscapeNonASCIICharacters', true);
+            $config->set('HTML.Allowed', 'b,a[href|target],i,*[class]');
+            $config->set('Attr.AllowedFrameTargets', array('_blank'));
+            // This avoids permission problems:
+            // $config->set('Core.DefinitionCache', null);
+            $config->set('Cache.DefinitionImpl', null);
+            // TODO: Use a cache directory:
+            // $config->set('Cache.SerializerPath', '/var/spool/whatever');
+
+            // $config->set('URI.Base', 'http://www.example.com');
+            // $config->set('URI.MakeAbsolute', true);
+            // $config->set('AutoFormat.AutoParagraph', true);
+            $this->purifier = new HTMLPurifier($config);
+        }
+
+        return $this->purifier;
     }
 }

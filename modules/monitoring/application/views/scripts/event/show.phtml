@@ -1,9 +1,7 @@
 <?php
 use Icinga\Module\Monitoring\Object\Service;
-use Icinga\Util\TimezoneDetect;
 
-/** @var \Icinga\Module\Monitoring\Backend\Ido\Query\IdoQuery $downtimes */
-/** @var stdClass $event */
+/** @var string[][] $details */
 /** @var \Icinga\Module\Monitoring\Object\MonitoredObject $object */
 /** @var \Icinga\Web\View $this */
 ?>
@@ -19,142 +17,11 @@ use Icinga\Util\TimezoneDetect;
     ?>
 </div>
 <div class="content">
-    <?php
-    $timezoneDetect = new TimezoneDetect();
-    $msg = $event->output;
-    switch ($event->type) {
-        case 'notify':
-            $icon = 'bell';
-            $label = $this->translate('Notification', 'tooltip');
-            $stateName = $object->getStateText($event->state, true);
-
-            if ($msg) {
-                $self = $this;
-                $msg = preg_replace_callback(
-                    '/^\[([^\]]+)\]/',
-                    function($match) use ($self) { return contactsLink($match, $self); },
-                    $msg
-                );
-            } else {
-                $msg = $this->translate('This notification was not sent out to any contact.');
-            }
-            break;
-        case 'comment':
-            $icon = 'comment-empty';
-            $label = $this->translate('Comment', 'tooltip');
-            break;
-        case 'comment_deleted':
-            $icon = 'cancel';
-            $label = $this->translate('Comment removed', 'tooltip');
-            break;
-        case 'ack':
-            $icon = 'ok';
-            $label = $this->translate('Acknowledged', 'tooltip');
-            break;
-        case 'ack_deleted':
-            $icon = 'ok';
-            $label = $this->translate('Acknowledgement removed', 'tooltip');
-            break;
-        case 'dt_comment':
-            $icon = 'plug';
-            $label = $this->translate('Downtime scheduled', 'tooltip');
-            break;
-        case 'dt_comment_deleted':
-            $icon = 'plug';
-            $label = $this->translate('Downtime removed', 'tooltip');
-            break;
-        case 'flapping':
-            $icon = 'flapping';
-            $label = $this->translate('Flapping started', 'tooltip');
-            $msg = sprintf($this->translate('Flapping with a %.2f%% state change rate'), $msg);
-            break;
-        case 'flapping_deleted':
-            $icon = 'flapping';
-            $label = $this->translate('Flapping stopped', 'tooltip');
-            $msg = sprintf($this->translate('Flapping with a %.2f%% state change rate'), $msg);
-            break;
-        case 'hard_state':
-            $icon = (int) $event->state === 0 ? 'thumbs-up' : 'warning-empty';
-            $label = $this->translate('Hard state change');
-            $stateName = $object->getStateText($event->state, true);
-            break;
-        case 'soft_state':
-            $icon = 'spinner';
-            $label = $this->translate('Soft state change');
-            $stateName = $object->getStateText($event->state, true);
-            break;
-        case 'dt_start':
-            $icon = 'plug';
-            $label = $this->translate('Downtime started', 'tooltip');
-            break;
-        case 'dt_end':
-            $icon = 'plug';
-            $label = $this->translate('Downtime ended', 'tooltip');
-            break;
-    }
-    ?>
-    <h2><?= $this->translate('Event') ?></h2>
-    <table class="name-value-table">
-        <tr>
-            <th><?= $this->translate('Type') ?></th>
-            <td><?= $this->icon($icon) ?> <?= $this->escape($label) ?></td>
-        </tr>
-        <tr>
-            <th><?= $this->translate('Time') ?></th>
-            <td><?= DateTime::createFromFormat('U', $event->timestamp)
-                ->setTimezone(new DateTimeZone(
-                    $timezoneDetect->success() ? $timezoneDetect->getTimezoneName() : date_default_timezone_get()
-                ))
-                ->format(DateTime::ISO8601)
-            ?></td>
-        </tr>
-        <?php if (isset($stateName)): ?>
-            <tr>
-                <th><?= $this->translate('State') ?></th>
-                <td><?= $this->escape($stateName) ?></td>
-            </tr>
-        <?php endif; ?>
-        <?php if ($msg): ?>
-            <tr>
-                <th><?= $this->translate('Message') ?></th>
-                <td class="overview-plugin-output"><?=
-                    // TODO(ak): this allows only a[href] in messages, but plugin output allows more
-                    $this->nl2br($this->createTicketLinks($this->escapeComment($msg)))
-                ?></td>
-            </tr>
-        <?php endif; ?>
+    <table class="name-value-table" data-base-target="_next">
+        <?php
+        foreach ($details as $detail) {
+            echo '<tr><th>' . $this->escape($detail[0]) . '</th><td>' . $detail[1] . '</td></tr>';
+        }
+        ?>
     </table>
-    <?php
-
-    if (isset($downtimes) && $downtimes->hasResult()) {
-        echo '<h2>' . $this->escape($this->translate('Downtimes')) . '</h2>'
-            . $this->render('partials/downtime/downtimes-header.phtml');
-    }
-    ?>
-    <?php if (isset($comments) && $comments->hasResult()): ?>
-        <h2><?= $this->escape($this->translate('Comments')) ?></h2>
-        <table data-base-target="_next"
-               class="table-row-selectable common-table multiselect"
-               data-icinga-multiselect-url="<?= $this->href('monitoring/comments/show') ?>"
-               data-icinga-multiselect-related="<?= $this->href("monitoring/comments") ?>"
-               data-icinga-multiselect-data="comment_id">
-            <tbody>
-            <?php foreach ($comments->peekAhead($this->compact) as $comment): ?>
-                <tr href="<?=  $this->href('monitoring/comment/show', array('comment_id' => $comment->id)) ?>">
-                    <td class="icon-col">
-                        <?= $this->partial('partials/comment/comment-description.phtml', array('comment' => $comment)) ?>
-                    </td>
-                    <td><?= $this->partial(
-                        'partials/comment/comment-detail.phtml',
-                        array(
-                            'comment'        => $comment,
-                            'delCommentForm' => isset($delCommentForm) ? $delCommentForm : null
-                            // Form is unset if the current user lacks the respective permission
-                        )
-                    ) ?></td>
-                </tr>
-            <?php endforeach ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
 </div>

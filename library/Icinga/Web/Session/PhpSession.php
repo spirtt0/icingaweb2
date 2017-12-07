@@ -97,10 +97,25 @@ class PhpSession extends Session
         session_name($this->sessionName);
 
         if ($this->hasBeenTouched) {
-            $cacheLimiter = ini_get('session.cache_limiter');
-            ini_set('session.use_cookies', false);
-            ini_set('session.use_only_cookies', false);
-            ini_set('session.cache_limiter', null);
+            $setCookieHeaders = array();
+
+            foreach (headers_list() as $header) {
+                $matches = array();
+                if (preg_match('/\ASet-Cookie:\s*(.+?)\s*\z/s', $header, $matches)) {
+                    foreach (preg_split('/\s*,\s*/', $matches[1], -1, PREG_SPLIT_NO_EMPTY) as $cookie) {
+                        $cookieParts = explode('=', $cookie, 2);
+                        if ($cookieParts[0] !== $this->sessionName) {
+                            $setCookieHeaders[] = $cookie;
+                        }
+                    }
+                }
+            }
+
+            if (empty($setCookieHeaders)) {
+                header_remove('Set-Cookie');
+            } else {
+                header('Set-Cookie: ' . implode(', ', $setCookieHeaders));
+            }
         }
 
         $cookie = new Cookie('bogus');
@@ -113,13 +128,6 @@ class PhpSession extends Session
         );
 
         session_start();
-
-        if ($this->hasBeenTouched) {
-            ini_set('session.use_cookies', true);
-            ini_set('session.use_only_cookies', true);
-            /** @noinspection PhpUndefinedVariableInspection */
-            ini_set('session.cache_limiter', $cacheLimiter);
-        }
     }
 
     /**

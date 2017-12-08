@@ -33,8 +33,8 @@ class EventController extends Controller
         'dt_comment_deleted'    => 'commentevent',
         'flapping'              => 'flappingevent',
         'flapping_deleted'      => 'flappingevent',
-        // 'hard_state'            => '',
-        // 'soft_state'            => '',
+        'hard_state'            => 'statechangeevent',
+        'soft_state'            => 'statechangeevent',
         'dt_start'              => 'downtimeevent',
         'dt_end'                => 'downtimeevent'
     );
@@ -336,6 +336,23 @@ class EventController extends Controller
                         'service_description'   => 'object_service_description'
                     ))
                     ->where('notificationevent_id', $id);
+            case 'statechangeevent':
+                return $this->backend->select()
+                    ->from('statechangeevent', array(
+                        'state_time'            => 'statechangeevent_state_time',
+                        'state'                 => 'statechangeevent_state',
+                        'current_check_attempt' => 'statechangeevent_current_check_attempt',
+                        'max_check_attempts'    => 'statechangeevent_max_check_attempts',
+                        'last_state'            => 'statechangeevent_last_state',
+                        'last_hard_state'       => 'statechangeevent_last_hard_state',
+                        'output'                => 'statechangeevent_output',
+                        'long_output'           => 'statechangeevent_long_output',
+                        'host_name'             => 'object_host_name',
+                        'service_description'   => 'object_service_description'
+                    ))
+                    ->where('statechangeevent_id', $id)
+                    ->where('statechangeevent_state_change', 1)
+                    ->where('statechangeevent_state_type', (int) ($type === 'hard_state'));
         }
     }
 
@@ -467,6 +484,22 @@ class EventController extends Controller
                     array($this->translate('End time'), $this->time($event->end_time)),
                     array($this->translate('Escalated'), $this->yesOrNo($event->escalated)),
                     array($this->translate('Contacts notified'), (int) $event->contacts_notified),
+                );
+            case 'statechangeevent':
+                $isService = $event->service_description !== null;
+
+                return array(
+                    array($this->translate('State'), $this->state($isService, $event->state)),
+                    array($this->translate('Check attempt'), $this->view->escape(sprintf(
+                        $this->translate('%d of %d'),
+                        (int) $event->current_check_attempt,
+                        (int) $event->max_check_attempts
+                    ))),
+                    array($this->translate('State time'), $this->time($event->state_time)),
+                    array($this->translate('Last state'), $this->state($isService, $event->last_state)),
+                    array($this->translate('Last hard state'), $this->state($isService, $event->last_hard_state)),
+                    array($this->translate('Output'), $this->pluginOutput($event->output)),
+                    array($this->translate('Long output'), $this->pluginOutput($event->long_output))
                 );
         }
     }

@@ -14,7 +14,7 @@ class StatechangeeventQuery extends IdoQuery
             'statechangeevent_state_time'               => 'UNIX_TIMESTAMP(sh.state_time)',
             'statechangeevent_state_change'             => 'sh.state_change',
             'statechangeevent_state'                    => 'sh.state',
-            'statechangeevent_state_type'               => 'sh.state_type',
+            'statechangeevent_state_type'               => "(CASE sh.state_type WHEN 0 THEN 'soft_state' WHEN 1 THEN 'hard_state' ELSE NULL END)",
             'statechangeevent_current_check_attempt'    => 'sh.current_check_attempt',
             'statechangeevent_max_check_attempts'       => 'sh.max_check_attempts',
             'statechangeevent_last_state'               => 'sh.last_state',

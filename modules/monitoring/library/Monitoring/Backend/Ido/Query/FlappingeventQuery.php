@@ -12,8 +12,8 @@ class FlappingeventQuery extends IdoQuery
         'flappingevent' => array(
             'flappingevent_id'                      => 'fh.flappinghistory_id',
             'flappingevent_event_time'              => 'UNIX_TIMESTAMP(fh.event_time)',
-            'flappingevent_event_type'              => 'fh.event_type',
-            'flappingevent_reason_type'             => 'fh.reason_type',
+            'flappingevent_event_type'              => "(CASE fh.event_type WHEN 1000 THEN 'flapping' WHEN 1001 THEN 'flapping_deleted' ELSE NULL END)",
+            'flappingevent_reason_type'             => "(CASE fh.reason_type WHEN 1 THEN 'stopped' WHEN 2 THEN 'disabled' ELSE NULL END)",
             'flappingevent_percent_state_change'    => 'fh.percent_state_change',
             'flappingevent_low_threshold'           => 'fh.low_threshold',
             'flappingevent_high_threshold'          => 'fh.high_threshold'

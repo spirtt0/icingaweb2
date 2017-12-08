@@ -11,7 +11,21 @@ class NotificationeventQuery extends IdoQuery
     protected $columnMap = array(
         'notificationevent' => array(
             'notificationevent_id'                  => 'n.notification_id',
-            'notificationevent_notification_reason' => 'n.notification_reason',
+            'notificationevent_notification_reason' => <<<EOF
+(CASE n.notification_reason
+    WHEN 0 THEN 'normal_notification'
+    WHEN 1 THEN 'ack'
+    WHEN 2 THEN 'flapping_started'
+    WHEN 3 THEN 'flapping_stopped'
+    WHEN 4 THEN 'flapping_disabled'
+    WHEN 5 THEN 'dt_start'
+    WHEN 6 THEN 'dt_end'
+    WHEN 7 THEN 'dt_cancel'
+    WHEN 99 THEN 'custom_notification'
+    ELSE NULL
+END)
+EOF
+,
             'notificationevent_start_time'          => 'UNIX_TIMESTAMP(n.start_time)',
             'notificationevent_end_time'            => 'UNIX_TIMESTAMP(n.end_time)',
             'notificationevent_state'               => 'n.state',

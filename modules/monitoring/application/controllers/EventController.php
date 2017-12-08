@@ -320,7 +320,7 @@ class EventController extends Controller
                         'service_description'   => 'object_service_description'
                     ))
                     ->where('flappingevent_id', $id)
-                    ->where('flappingevent_event_type', $type === 'flapping' ? 1000 : 1001);
+                    ->where('flappingevent_event_type', $type);
             case 'notificationevent':
                 return $this->backend->select()
                     ->from('notificationevent', array(
@@ -352,7 +352,7 @@ class EventController extends Controller
                     ))
                     ->where('statechangeevent_id', $id)
                     ->where('statechangeevent_state_change', 1)
-                    ->where('statechangeevent_state_type', (int) ($type === 'hard_state'));
+                    ->where('statechangeevent_state_type', $type);
         }
     }
 
@@ -384,28 +384,28 @@ class EventController extends Controller
                     array($this->translate('Actual end time'), $this->time($event->actual_end_time))
                 );
             case 'commentevent':
-                switch ((string) $event->entry_type) {
-                    case '1':
+                switch ($event->entry_type) {
+                    case 'comment':
                         $entryType = $this->translate('User comment');
                         break;
-                    case '2':
+                    case 'downtime':
                         $entryType = $this->translate('Scheduled downtime');
                         break;
-                    case '3':
+                    case 'flapping':
                         $entryType = $this->translate('Flapping');
                         break;
-                    case '4':
+                    case 'ack':
                         $entryType = $this->translate('Acknowledgement');
                         break;
                     default:
                         $entryType = $this->translate('N/A');
                 }
 
-                switch ((string) $event->comment_source) {
-                    case '0':
+                switch ($event->comment_source) {
+                    case 'icinga':
                         $commentSource = $this->translate('Icinga');
                         break;
-                    case '1':
+                    case 'user':
                         $commentSource = $this->translate('User');
                         break;
                     default:
@@ -424,11 +424,11 @@ class EventController extends Controller
                     array($this->translate('Deletion time'), $this->time($event->deletion_time))
                 );
             case 'flappingevent':
-                switch ((string) $event->reason_type) {
-                    case '1':
+                switch ($event->reason_type) {
+                    case 'stopped':
                         $reasonType = $this->translate('Flapping stopped normally');
                         break;
-                    case '2':
+                    case 'disabled':
                         $reasonType = $this->translate('Flapping was disabled');
                         break;
                     default:
@@ -443,32 +443,32 @@ class EventController extends Controller
                     array($this->translate('High threshold'), $this->percent($event->high_threshold))
                 );
             case 'notificationevent':
-                switch ((string) $event->notification_reason) {
-                    case '0':
+                switch ($event->notification_reason) {
+                    case 'normal_notification':
                         $notificationReason = $this->translate('Normal notification');
                         break;
-                    case '1':
+                    case 'ack':
                         $notificationReason = $this->translate('Problem acknowledgement');
                         break;
-                    case '2':
+                    case 'flapping_started':
                         $notificationReason = $this->translate('Flapping started');
                         break;
-                    case '3':
+                    case 'flapping_stopped':
                         $notificationReason = $this->translate('Flapping stopped');
                         break;
-                    case '4':
+                    case 'flapping_disabled':
                         $notificationReason = $this->translate('Flapping was disabled');
                         break;
-                    case '5':
+                    case 'dt_start':
                         $notificationReason = $this->translate('Downtime started');
                         break;
-                    case '6':
+                    case 'dt_end':
                         $notificationReason = $this->translate('Downtime ended');
                         break;
-                    case '7':
+                    case 'dt_cancel':
                         $notificationReason = $this->translate('Downtime was cancelled');
                         break;
-                    case '99':
+                    case 'custom_notification':
                         $notificationReason = $this->translate('Custom notification');
                         break;
                     default:

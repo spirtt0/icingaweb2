@@ -413,11 +413,11 @@ class EventController extends Controller
                 }
 
                 return array(
-                    array($this->translate('Comment source'), $this->view->escape($commentSource)),
+                    array($this->translate('Source'), $this->view->escape($commentSource)),
                     array($this->translate('Entry type'), $this->view->escape($entryType)),
                     array($this->translate('Author'), $this->contact($event->author_name)),
-                    array($this->translate('Comment time'), $this->time($event->comment_time)),
-                    array($this->translate('Comment'), $this->comment($event->comment_data)),
+                    array($this->translate('Time'), $this->time($event->comment_time)),
+                    array($this->translate('Message'), $this->comment($event->comment_data)),
                     array($this->translate('Is persistent'), $this->yesOrNo($event->is_persistent)),
                     array($this->translate('Expires'), $this->yesOrNo($event->expires)),
                     array($this->translate('Expiration time'), $this->time($event->expiration_time)),
@@ -436,7 +436,7 @@ class EventController extends Controller
                 }
 
                 return array(
-                    array($this->translate('Reason type'), $this->view->escape($reasonType)),
+                    array($this->translate('Reason'), $this->view->escape($reasonType)),
                     array($this->translate('Event time'), $this->time($event->event_time)),
                     array($this->translate('State change'), $this->percent($event->percent_state_change)),
                     array($this->translate('Low threshold'), $this->percent($event->low_threshold)),
@@ -476,7 +476,7 @@ class EventController extends Controller
                 }
 
                 return array(
-                    array($this->translate('Notification reason'), $this->view->escape($notificationReason)),
+                    array($this->translate('Reason'), $this->view->escape($notificationReason)),
                     array($this->translate('State'), $this->state($event->service_description !== null, $event->state)),
                     array($this->translate('Output'), $this->pluginOutput($event->output)),
                     array($this->translate('Long output'), $this->pluginOutput($event->long_output)),

@@ -9,7 +9,7 @@ class Notificationevent extends DataView
     {
         return array(
             'notificationevent_id',
-            'notificationevent_notification_reason',
+            'notificationevent_reason',
             'notificationevent_start_time',
             'notificationevent_end_time',
             'notificationevent_state',

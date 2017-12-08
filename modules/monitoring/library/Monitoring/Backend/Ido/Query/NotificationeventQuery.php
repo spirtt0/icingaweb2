@@ -11,7 +11,7 @@ class NotificationeventQuery extends IdoQuery
     protected $columnMap = array(
         'notificationevent' => array(
             'notificationevent_id'                  => 'n.notification_id',
-            'notificationevent_notification_reason' => <<<EOF
+            'notificationevent_reason' => <<<EOF
 (CASE n.notification_reason
     WHEN 0 THEN 'normal_notification'
     WHEN 1 THEN 'ack'

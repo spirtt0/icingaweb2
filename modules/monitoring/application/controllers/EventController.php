@@ -324,7 +324,7 @@ class EventController extends Controller
             case 'notificationevent':
                 return $this->backend->select()
                     ->from('notificationevent', array(
-                        'notification_reason'   => 'notificationevent_notification_reason',
+                        'notification_reason'   => 'notificationevent_reason',
                         'start_time'            => 'notificationevent_start_time',
                         'end_time'              => 'notificationevent_end_time',
                         'state'                 => 'notificationevent_state',

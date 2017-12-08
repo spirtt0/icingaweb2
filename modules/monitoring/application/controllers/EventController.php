@@ -15,6 +15,8 @@ use Icinga\Web\Url;
 use Icinga\Web\Widget\Tabextension\DashboardAction;
 use Icinga\Web\Widget\Tabextension\MenuAction;
 use Icinga\Web\Widget\Tabextension\OutputFormat;
+use InvalidArgumentException;
+use Zend_View_Helper_PluginOutput;
 
 class EventController extends Controller
 {
@@ -22,7 +24,7 @@ class EventController extends Controller
      * @var string[]
      */
     protected $dataViewsByType = array(
-        // 'notify'                => '',
+        'notify'                => 'notificationevent',
         'comment'               => 'commentevent',
         'comment_deleted'       => 'commentevent',
         'ack'                   => 'commentevent',
@@ -183,6 +185,44 @@ class EventController extends Controller
     }
 
     /**
+     * Render the given monitored object state as human readable HTML or 'N/A' if NULL
+     *
+     * @param   bool        $isService
+     * @param   int|null    $state
+     *
+     * @return  string
+     */
+    protected function state($isService, $state)
+    {
+        if ($state === null) {
+            $state = $this->translate('N/A');
+        } else {
+            try {
+                $state = $isService ? Service::getStateText($state, true) : Host::getStateText($state, true);
+            } catch (InvalidArgumentException $e) {
+                $state = $this->translate('N/A');
+            }
+        }
+
+        return $this->view->escape($state);
+    }
+
+    /**
+     * Render the given plugin output as human readable HTML
+     *
+     * @param   string  $output
+     *
+     * @return  string
+     */
+    protected function pluginOutput($output)
+    {
+        require_once __DIR__ . '/../views/helpers/PluginOutput.php';
+
+        $helper = new Zend_View_Helper_PluginOutput();
+        return $helper->setView($this->view)->pluginOutput($output);
+    }
+
+    /**
      * Return the icon and the label for the given event type
      *
      * @param   string  $eventType
@@ -281,6 +321,21 @@ class EventController extends Controller
                     ))
                     ->where('flappingevent_id', $id)
                     ->where('flappingevent_event_type', $type === 'flapping' ? 1000 : 1001);
+            case 'notificationevent':
+                return $this->backend->select()
+                    ->from('notificationevent', array(
+                        'notification_reason'   => 'notificationevent_notification_reason',
+                        'start_time'            => 'notificationevent_start_time',
+                        'end_time'              => 'notificationevent_end_time',
+                        'state'                 => 'notificationevent_state',
+                        'output'                => 'notificationevent_output',
+                        'long_output'           => 'notificationevent_long_output',
+                        'escalated'             => 'notificationevent_escalated',
+                        'contacts_notified'     => 'notificationevent_contacts_notified',
+                        'host_name'             => 'object_host_name',
+                        'service_description'   => 'object_service_description'
+                    ))
+                    ->where('notificationevent_id', $id);
         }
     }
 
@@ -369,6 +424,49 @@ class EventController extends Controller
                     array($this->translate('State change'), $this->percent($event->percent_state_change)),
                     array($this->translate('Low threshold'), $this->percent($event->low_threshold)),
                     array($this->translate('High threshold'), $this->percent($event->high_threshold))
+                );
+            case 'notificationevent':
+                switch ((string) $event->notification_reason) {
+                    case '0':
+                        $notificationReason = $this->translate('Normal notification');
+                        break;
+                    case '1':
+                        $notificationReason = $this->translate('Problem acknowledgement');
+                        break;
+                    case '2':
+                        $notificationReason = $this->translate('Flapping started');
+                        break;
+                    case '3':
+                        $notificationReason = $this->translate('Flapping stopped');
+                        break;
+                    case '4':
+                        $notificationReason = $this->translate('Flapping was disabled');
+                        break;
+                    case '5':
+                        $notificationReason = $this->translate('Downtime started');
+                        break;
+                    case '6':
+                        $notificationReason = $this->translate('Downtime ended');
+                        break;
+                    case '7':
+                        $notificationReason = $this->translate('Downtime was cancelled');
+                        break;
+                    case '99':
+                        $notificationReason = $this->translate('Custom notification');
+                        break;
+                    default:
+                        $notificationReason = $this->translate('N/A');
+                }
+
+                return array(
+                    array($this->translate('Notification reason'), $this->view->escape($notificationReason)),
+                    array($this->translate('State'), $this->state($event->service_description !== null, $event->state)),
+                    array($this->translate('Output'), $this->pluginOutput($event->output)),
+                    array($this->translate('Long output'), $this->pluginOutput($event->long_output)),
+                    array($this->translate('Start time'), $this->time($event->start_time)),
+                    array($this->translate('End time'), $this->time($event->end_time)),
+                    array($this->translate('Escalated'), $this->yesOrNo($event->escalated)),
+                    array($this->translate('Contacts notified'), (int) $event->contacts_notified),
                 );
         }
     }

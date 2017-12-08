@@ -22,14 +22,14 @@ class EventController extends Controller
      */
     protected $dataViewsByType = array(
         // 'notify'                => '',
-        // 'comment'               => '',
-        // 'comment_deleted'       => '',
-        // 'ack'                   => '',
-        // 'ack_deleted'           => '',
-        // 'dt_comment'            => '',
-        // 'dt_comment_deleted'    => '',
-        // 'flapping'              => '',
-        // 'flapping_deleted'      => '',
+        'comment'               => 'commentevent',
+        'comment_deleted'       => 'commentevent',
+        'ack'                   => 'commentevent',
+        'ack_deleted'           => 'commentevent',
+        'dt_comment'            => 'commentevent',
+        'dt_comment_deleted'    => 'commentevent',
+        'flapping'              => 'commentevent',
+        'flapping_deleted'      => 'commentevent',
         // 'hard_state'            => '',
         // 'soft_state'            => '',
         'dt_start'              => 'downtimeevent',
@@ -56,14 +56,20 @@ class EventController extends Controller
             'trigger_time'          => 'downtimeevent_trigger_time',
             'host_name'             => 'object_host_name',
             'service_description'   => 'object_service_description'
+        ),
+        'commentevent' => array(
+            'entry_type'            => 'commentevent_entry_type',
+            'comment_time'          => 'commentevent_comment_time',
+            'author_name'           => 'commentevent_author_name',
+            'comment_data'          => 'commentevent_comment_data',
+            'is_persistent'         => 'commentevent_is_persistent',
+            'comment_source'        => 'commentevent_comment_source',
+            'expires'               => 'commentevent_expires',
+            'expiration_time'       => 'commentevent_expiration_time',
+            'deletion_time'         => 'commentevent_deletion_time',
+            'host_name'             => 'object_host_name',
+            'service_description'   => 'object_service_description'
         )
-    );
-
-    /**
-     * @var string[]
-     */
-    protected $idColumnByDataView = array(
-        'downtimeevent' => 'downtimeevent_id'
     );
 
     /**
@@ -86,7 +92,7 @@ class EventController extends Controller
 
         $query = $this->backend->select()
             ->from($dataView, $this->columnsByDataView[$dataView])
-            ->where($this->idColumnByDataView[$dataView], $id);
+            ->where("{$dataView}_id", $id);
 
         $this->applyRestriction('monitoring/filter/objects', $query);
 
@@ -264,6 +270,46 @@ class EventController extends Controller
                     array($this->translate('Actual start time'), $this->time($event->actual_start_time)),
                     array($this->translate('Scheduled end time'), $this->time($event->scheduled_end_time)),
                     array($this->translate('Actual end time'), $this->time($event->actual_end_time))
+                );
+            case 'commentevent':
+                switch ((string) $event->entry_type) {
+                    case '1':
+                        $entryType = $this->translate('User comment');
+                        break;
+                    case '2':
+                        $entryType = $this->translate('Scheduled downtime');
+                        break;
+                    case '3':
+                        $entryType = $this->translate('Flapping');
+                        break;
+                    case '4':
+                        $entryType = $this->translate('Acknowledgement');
+                        break;
+                    default:
+                        $entryType = $this->translate('N/A');
+                }
+
+                switch ((string) $event->comment_source) {
+                    case '0':
+                        $commentSource = $this->translate('Icinga');
+                        break;
+                    case '1':
+                        $commentSource = $this->translate('User');
+                        break;
+                    default:
+                        $commentSource = $this->translate('N/A');
+                }
+
+                return array(
+                    array($this->translate('Comment source'), $this->view->escape($commentSource)),
+                    array($this->translate('Entry type'), $this->view->escape($entryType)),
+                    array($this->translate('Author'), $this->contact($event->author_name)),
+                    array($this->translate('Comment time'), $this->time($event->comment_time)),
+                    array($this->translate('Comment'), $this->comment($event->comment_data)),
+                    array($this->translate('Is persistent'), $this->yesOrNo($event->is_persistent)),
+                    array($this->translate('Expires'), $this->yesOrNo($event->expires)),
+                    array($this->translate('Expiration time'), $this->time($event->expiration_time)),
+                    array($this->translate('Deletion time'), $this->time($event->deletion_time))
                 );
         }
     }

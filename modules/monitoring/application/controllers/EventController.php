@@ -5,6 +5,7 @@ namespace Icinga\Module\Monitoring\Controllers;
 
 use DateTime;
 use DateTimeZone;
+use Icinga\Data\Queryable;
 use Icinga\Date\DateFormatter;
 use Icinga\Module\Monitoring\Controller;
 use Icinga\Module\Monitoring\Object\Host;
@@ -28,48 +29,12 @@ class EventController extends Controller
         'ack_deleted'           => 'commentevent',
         'dt_comment'            => 'commentevent',
         'dt_comment_deleted'    => 'commentevent',
-        'flapping'              => 'commentevent',
-        'flapping_deleted'      => 'commentevent',
+        'flapping'              => 'flappingevent',
+        'flapping_deleted'      => 'flappingevent',
         // 'hard_state'            => '',
         // 'soft_state'            => '',
         'dt_start'              => 'downtimeevent',
         'dt_end'                => 'downtimeevent'
-    );
-
-    /**
-     * @var string[][]
-     */
-    protected $columnsByDataView = array(
-        'downtimeevent' => array(
-            'entry_time'            => 'downtimeevent_entry_time',
-            'author_name'           => 'downtimeevent_author_name',
-            'comment_data'          => 'downtimeevent_comment_data',
-            'is_fixed'              => 'downtimeevent_is_fixed',
-            'duration'              => 'downtimeevent_duration',
-            'scheduled_start_time'  => 'downtimeevent_scheduled_start_time',
-            'scheduled_end_time'    => 'downtimeevent_scheduled_end_time',
-            'was_started'           => 'downtimeevent_was_started',
-            'actual_start_time'     => 'downtimeevent_actual_start_time',
-            'actual_end_time'       => 'downtimeevent_actual_end_time',
-            'was_cancelled'         => 'downtimeevent_was_cancelled',
-            'is_in_effect'          => 'downtimeevent_is_in_effect',
-            'trigger_time'          => 'downtimeevent_trigger_time',
-            'host_name'             => 'object_host_name',
-            'service_description'   => 'object_service_description'
-        ),
-        'commentevent' => array(
-            'entry_type'            => 'commentevent_entry_type',
-            'comment_time'          => 'commentevent_comment_time',
-            'author_name'           => 'commentevent_author_name',
-            'comment_data'          => 'commentevent_comment_data',
-            'is_persistent'         => 'commentevent_is_persistent',
-            'comment_source'        => 'commentevent_comment_source',
-            'expires'               => 'commentevent_expires',
-            'expiration_time'       => 'commentevent_expiration_time',
-            'deletion_time'         => 'commentevent_deletion_time',
-            'host_name'             => 'object_host_name',
-            'service_description'   => 'object_service_description'
-        )
     );
 
     /**
@@ -90,9 +55,7 @@ class EventController extends Controller
 
         $dataView = $this->dataViewsByType[$type];
 
-        $query = $this->backend->select()
-            ->from($dataView, $this->columnsByDataView[$dataView])
-            ->where("{$dataView}_id", $id);
+        $query = $this->query($type, $id);
 
         $this->applyRestriction('monitoring/filter/objects', $query);
 
@@ -180,6 +143,20 @@ class EventController extends Controller
     }
 
     /**
+     * Render the given percent number as human readable HTML or 'N/A' if NULL
+     *
+     * @param   float|null  $percent
+     *
+     * @return  string
+     */
+    protected function percent($percent)
+    {
+        return $this->view->escape(
+            $percent === null ? $this->translate('N/A') : sprintf($this->translate('%.2f%%'), $percent)
+        );
+    }
+
+    /**
      * Render the given comment message as HTML or 'N/A' if NULL
      *
      * @param   string|null $message
@@ -241,6 +218,69 @@ class EventController extends Controller
                 return array('plug', $this->translate('Downtime started', 'tooltip'));
             case 'dt_end':
                 return array('plug', $this->translate('Downtime ended', 'tooltip'));
+        }
+    }
+
+    /**
+     * Return a query for the given event ID of the given type
+     *
+     * @param   string  $type
+     * @param   int     $id
+     *
+     * @return  Queryable
+     */
+    protected function query($type, $id)
+    {
+        switch ($this->dataViewsByType[$type]) {
+            case 'downtimeevent':
+                return $this->backend->select()
+                    ->from('downtimeevent', array(
+                        'entry_time'            => 'downtimeevent_entry_time',
+                        'author_name'           => 'downtimeevent_author_name',
+                        'comment_data'          => 'downtimeevent_comment_data',
+                        'is_fixed'              => 'downtimeevent_is_fixed',
+                        'duration'              => 'downtimeevent_duration',
+                        'scheduled_start_time'  => 'downtimeevent_scheduled_start_time',
+                        'scheduled_end_time'    => 'downtimeevent_scheduled_end_time',
+                        'was_started'           => 'downtimeevent_was_started',
+                        'actual_start_time'     => 'downtimeevent_actual_start_time',
+                        'actual_end_time'       => 'downtimeevent_actual_end_time',
+                        'was_cancelled'         => 'downtimeevent_was_cancelled',
+                        'is_in_effect'          => 'downtimeevent_is_in_effect',
+                        'trigger_time'          => 'downtimeevent_trigger_time',
+                        'host_name'             => 'object_host_name',
+                        'service_description'   => 'object_service_description'
+                    ))
+                    ->where('downtimeevent_id', $id);
+            case 'commentevent':
+                return $this->backend->select()
+                    ->from('commentevent', array(
+                        'entry_type'            => 'commentevent_entry_type',
+                        'comment_time'          => 'commentevent_comment_time',
+                        'author_name'           => 'commentevent_author_name',
+                        'comment_data'          => 'commentevent_comment_data',
+                        'is_persistent'         => 'commentevent_is_persistent',
+                        'comment_source'        => 'commentevent_comment_source',
+                        'expires'               => 'commentevent_expires',
+                        'expiration_time'       => 'commentevent_expiration_time',
+                        'deletion_time'         => 'commentevent_deletion_time',
+                        'host_name'             => 'object_host_name',
+                        'service_description'   => 'object_service_description'
+                    ))
+                    ->where('commentevent_id', $id);
+            case 'flappingevent':
+                return $this->backend->select()
+                    ->from('flappingevent', array(
+                        'event_time'            => 'flappingevent_event_time',
+                        'reason_type'           => 'flappingevent_reason_type',
+                        'percent_state_change'  => 'flappingevent_percent_state_change',
+                        'low_threshold'         => 'flappingevent_low_threshold',
+                        'high_threshold'        => 'flappingevent_high_threshold',
+                        'host_name'             => 'object_host_name',
+                        'service_description'   => 'object_service_description'
+                    ))
+                    ->where('flappingevent_id', $id)
+                    ->where('flappingevent_event_type', $type === 'flapping' ? 1000 : 1001);
         }
     }
 
@@ -310,6 +350,25 @@ class EventController extends Controller
                     array($this->translate('Expires'), $this->yesOrNo($event->expires)),
                     array($this->translate('Expiration time'), $this->time($event->expiration_time)),
                     array($this->translate('Deletion time'), $this->time($event->deletion_time))
+                );
+            case 'flappingevent':
+                switch ((string) $event->reason_type) {
+                    case '1':
+                        $reasonType = $this->translate('Flapping stopped normally');
+                        break;
+                    case '2':
+                        $reasonType = $this->translate('Flapping was disabled');
+                        break;
+                    default:
+                        $reasonType = $this->translate('N/A');
+                }
+
+                return array(
+                    array($this->translate('Reason type'), $this->view->escape($reasonType)),
+                    array($this->translate('Event time'), $this->time($event->event_time)),
+                    array($this->translate('State change'), $this->percent($event->percent_state_change)),
+                    array($this->translate('Low threshold'), $this->percent($event->low_threshold)),
+                    array($this->translate('High threshold'), $this->percent($event->high_threshold))
                 );
         }
     }

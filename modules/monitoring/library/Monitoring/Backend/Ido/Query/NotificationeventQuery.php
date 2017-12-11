@@ -25,7 +25,7 @@ class NotificationeventQuery extends IdoQuery
     ELSE NULL
 END)
 EOF
-,
+            ,
             'notificationevent_start_time'          => 'UNIX_TIMESTAMP(n.start_time)',
             'notificationevent_end_time'            => 'UNIX_TIMESTAMP(n.end_time)',
             'notificationevent_state'               => 'n.state',
